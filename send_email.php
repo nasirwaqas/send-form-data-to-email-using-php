@@ -32,10 +32,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             $field = ucfirst(str_replace('_', ' ', $key));
             // Only show image if value is a valid data URL
-            if ($key === 'applicant_signature' && !empty($value) && strpos($value, 'data:image') === 0) {
-                $message .= "<tr><th style='text-align:left;'>$field</th><td><img src='cid:applicant_signature_cid' alt='Applicant Signature' style='max-width:200px;'/></td></tr>";
-            } elseif ($key === 'consent_signature' && !empty($value) && strpos($value, 'data:image') === 0) {
-                $message .= "<tr><th style='text-align:left;'>$field</th><td><img src='cid:consent_signature_cid' alt='Consent Signature' style='max-width:200px;'/></td></tr>";
+            if ($key === 'applicant_signature') {
+                if (!empty($value) && strpos($value, 'data:image') === 0) {
+                    $message .= "<tr><th style='text-align:left;'>$field</th><td><img src='cid:applicant_signature_cid' alt='Applicant Signature' style='max-width:200px;'/></td></tr>";
+                } else {
+                    $message .= "<tr><th style='text-align:left;'>$field</th><td>No signature provided</td></tr>";
+                }
+            } elseif ($key === 'consent_signature') {
+                if (!empty($value) && strpos($value, 'data:image') === 0) {
+                    $message .= "<tr><th style='text-align:left;'>$field</th><td><img src='cid:consent_signature_cid' alt='Consent Signature' style='max-width:200px;'/></td></tr>";
+                } else {
+                    $message .= "<tr><th style='text-align:left;'>$field</th><td>No consent signature provided</td></tr>";
+                }
             } else {
                 $message .= "<tr><th style='text-align:left;'>$field</th><td>" . htmlspecialchars($value) . "</td></tr>";
             }
@@ -43,16 +51,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $message .= "</table>";
         $mail->Body = $message;
 
+        // Attach applicant signature if present and valid
         $signature = $_POST['applicant_signature'] ?? '';
-        // Attach applicant signature if present
-        if ($signature) {
+        if (!empty($signature) && strpos($signature, 'data:image') === 0) {
             $data = preg_replace('#^data:image/\w+;base64,#i', '', $signature);
             $data = base64_decode($data);
             $mail->addStringEmbeddedImage($data, 'applicant_signature_cid', 'applicant_signature.png', 'base64', 'image/png');
         }
-        // Attach consent signature if present
+        // Attach consent signature if present and valid
         $consent_signature = $_POST['consent_signature'] ?? '';
-        if ($consent_signature) {
+        if (!empty($consent_signature) && strpos($consent_signature, 'data:image') === 0) {
             $data2 = preg_replace('#^data:image/\w+;base64,#i', '', $consent_signature);
             $data2 = base64_decode($data2);
             $mail->addStringEmbeddedImage($data2, 'consent_signature_cid', 'consent_signature.png', 'base64', 'image/png');
@@ -60,8 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $mail->send();
         echo "✅ Application submitted successfully!";
     } catch (Exception $e) {
-        echo "❌ Failed to send application. Mailer Error: {$mail->ErrorInfo}. 
-              Make sure you are using a Gmail **App Password** and that IMAP/SMTP is enabled.";
+        echo "❌ Failed to send application. Mailer Error: {$mail->ErrorInfo}. \nMake sure you are using a Gmail **App Password** and that IMAP/SMTP is enabled.";
     }
 } else {
     echo "Invalid request.";
